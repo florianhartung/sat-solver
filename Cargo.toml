@@ -1,0 +1,15 @@
+[package]
+name = "sat-solver"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "sat_solver_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sat_solver"
+path = "src/main.rs"
+
+
+[dependencies]
