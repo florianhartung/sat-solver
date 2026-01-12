@@ -1,4 +1,6 @@
 use std::{
+    collections::HashMap,
+    mem,
     num::{NonZeroI32, NonZeroU32},
     ops::{AddAssign, BitOr, Neg, Not},
 };
@@ -34,7 +36,12 @@ pub struct CNF {
 
 impl CNF {
     fn remove_clauses_containing(&mut self, literal: Literal) {
-        self.clauses.retain(|clause| !clause.contains(literal));
+        self.clauses = self
+            .clauses
+            .iter_mut()
+            .map(|clause| mem::replace(clause, Clause(Vec::new())))
+            .filter(|clause| !clause.contains(literal))
+            .collect()
     }
 
     fn is_empty(&self) -> bool {
@@ -72,12 +79,46 @@ impl CNF {
             .filter_map(|clause| clause.as_unit_clause())
             .collect()
     }
+
+    fn get_pure_literals(&self) -> Vec<Literal> {
+        let mut pos_neg_by_variable = HashMap::<Variable, (bool, bool)>::new();
+
+        let all_literals = self
+            .clauses
+            .iter()
+            .flat_map(|clause| clause.iter_literals());
+
+        for literal in all_literals {
+            let entry = pos_neg_by_variable
+                .entry(literal.into_variable())
+                .or_insert((false, false));
+
+            if literal.is_neg() {
+                entry.1 = true;
+            } else {
+                entry.0 = true;
+            }
+        }
+
+        pos_neg_by_variable
+            .into_iter()
+            .filter_map(|(variable, pos_neg)| match pos_neg {
+                (true, false) => Some(Literal::new_from_variable(variable, false)),
+                (false, true) => Some(Literal::new_from_variable(variable, true)),
+                _ => None,
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone)]
 struct Clause(Vec<Literal>);
 
 impl Clause {
+    fn iter_literals(&self) -> impl Iterator<Item = Literal> {
+        self.0.iter().copied()
+    }
+
     fn contains(&self, literal: Literal) -> bool {
         self.0.contains(&literal)
     }
@@ -99,7 +140,7 @@ impl Clause {
 }
 
 /// Inner value is always guaranteed to be positive
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Variable(NonZeroI32);
 
 impl Variable {
@@ -125,6 +166,10 @@ impl Literal {
 
     fn into_variable(self) -> Variable {
         Variable(self.0.abs())
+    }
+
+    fn is_neg(self) -> bool {
+        self.0.is_negative()
     }
 }
 

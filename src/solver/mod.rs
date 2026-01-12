@@ -7,7 +7,18 @@ pub fn solve(cnf: CNF) -> Outcome {
 }
 
 fn dpll(formula: CNF, mut assignment: Assignment) -> Outcome {
-    let before_propagation = assignment.len();
+    // Pure Literals
+    let pure_literals = formula.get_pure_literals();
+    if !pure_literals.is_empty() {
+        println!("found {} pure literals", pure_literals.len());
+    }
+
+    for pure_literal in pure_literals {
+        assignment += pure_literal;
+    }
+
+    // Unit Propagation
+    // let before_propagation = assignment.len();
     loop {
         let unit_clauses = formula.get_unit_clauses(&assignment);
 
@@ -19,10 +30,10 @@ fn dpll(formula: CNF, mut assignment: Assignment) -> Outcome {
             }
         }
     }
-    println!(
-        "Propagated {} assignments",
-        assignment.len() - before_propagation
-    );
+    // println!(
+    //     "Propagated {} assignments",
+    //     assignment.len() - before_propagation
+    // );
 
     if let Some(outcome) = sat(formula.clone(), &assignment) {
         return outcome;
@@ -34,9 +45,9 @@ fn dpll(formula: CNF, mut assignment: Assignment) -> Outcome {
     assignment += next_literal;
     assignment2 += !next_literal;
 
-    println!("Guessing {:?}", next_literal);
+    // println!("Guessing {:?}", next_literal);
     let first = dpll(formula.clone(), assignment2);
-    println!("Guessing {:?}", !next_literal);
+    // println!("Guessing {:?}", !next_literal);
     let second = dpll(formula, assignment);
     first | second
 }

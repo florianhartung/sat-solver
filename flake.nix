@@ -59,6 +59,7 @@
 
               rust-toolchain
               rust-analyzer
+              cargo-flamegraph
             ];
           }
         );

@@ -11,5 +11,8 @@ path = "src/lib.rs"
 name = "sat_solver"
 path = "src/main.rs"
 
+[profile.release]
+debug = true # for flamegraph
+
 
 [dependencies]
