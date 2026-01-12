@@ -1,113 +1,166 @@
-use std::{mem, num::NonZeroI64};
+use std::{
+    num::{NonZeroI32, NonZeroU32},
+    ops::{AddAssign, BitOr, Neg, Not},
+};
 
+mod dimacs_parser;
+mod solver;
+
+pub use dimacs_parser::parse_from_dimacs_str;
+pub use solver::solve;
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
     Satisfiable,
     Unsatisfiable,
 }
 
-#[derive(Debug)]
+impl BitOr for Outcome {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Outcome::Unsatisfiable, Outcome::Unsatisfiable) => Outcome::Unsatisfiable,
+            _ => Outcome::Satisfiable,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct CNF {
-    num_variables: u32,
+    num_variables: u32, // u32 is not correct
     clauses: Vec<Clause>,
 }
 
-#[derive(Debug)]
-struct Clause(Vec<Literal>);
-
-#[derive(Debug)]
-struct Literal(NonZeroI64);
-
-pub fn solve(cnf: CNF) -> Outcome {
-    todo!("write solver")
-}
-
-pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
-    let non_empty_lines = input.lines().filter(|line| !line.trim().is_empty());
-
-    let mut non_comment_lines = non_empty_lines.filter(|line| !line.starts_with('c'));
-
-    // Parse the problem line
-    // It is of the form: p <NUM_VARIABLES> <NUM_CLAUSES>
-
-    let first_line = non_comment_lines.next().ok_or("no problem line found")?;
-
-    let mut first_line_parts = first_line.split_whitespace();
-
-    let first_part = first_line_parts
-        .next()
-        .expect("that no line contains only whitespaces because this was previously checked for");
-    if first_part != "p" {
-        Err("no problem line found")?;
+impl CNF {
+    fn remove_clauses_containing(&mut self, literal: Literal) {
+        self.clauses.retain(|clause| !clause.contains(literal));
     }
 
-    let format = first_line_parts
-        .next()
-        .ok_or("missing format in problem line")?;
-    if format != "cnf" {
-        Err(format!("unsupported format {format}"))?;
+    fn is_empty(&self) -> bool {
+        self.clauses.is_empty()
     }
 
-    let num_variables: u32 = first_line_parts
-        .next()
-        .ok_or("missing variable count in problem line")?
-        .parse()
-        .map_err(|parse_err| {
-            format!("failed to parse variable count in problem line (max is 2^32): {parse_err}")
-        })?;
-
-    let num_clauses: usize = first_line_parts
-        .next()
-        .ok_or("missing clause count in problem line")?
-        .parse()
-        .map_err(|parse_err| {
-            format!("failed to parse clause count in problem line: {parse_err}")
-        })?;
-
-    if first_line_parts.next().is_some() {
-        Err("problem line contains additional characters")?;
-    }
-
-    // Now parse the clauses and literals. Every clause is a list of
-    // whitespace-delimited integers. Multiple clauses are delimited by zeros.
-
-    let mut literals = non_comment_lines
-        .flat_map(str::split_whitespace)
-        .map(|literal| {
-            str::parse::<i64>(literal)
-                .map_err(|parse_err| format!("failed to parse literal: {parse_err}"))
-        });
-
-    let mut clauses: Vec<Clause> = Vec::new();
-    let mut current_clause: Vec<Literal> = Vec::new();
-
-    while let Some(literal) = literals.next() {
-        match NonZeroI64::new(literal?) {
-            Some(new_literal) => {
-                current_clause.push(Literal(new_literal));
-            }
-            None => {
-                if !current_clause.is_empty() {
-                    let new_clause = mem::take(&mut current_clause);
-                    clauses.push(Clause(new_clause));
-                }
-            }
+    fn remove_from_clauses(&mut self, literal: Literal) {
+        for clause in &mut self.clauses {
+            clause.remove(literal);
         }
     }
-    if !current_clause.is_empty() {
-        clauses.push(Clause(current_clause));
+
+    fn contains_empty_clause(&self) -> bool {
+        self.clauses.iter().any(|clause| clause.is_empty())
     }
 
-    // This check doesn't hurt I guess
-    if num_clauses != clauses.len() {
-        Err(format!(
-            "invalid number of clauses. the problem line specified {} but only {} clauses were found",
-            num_clauses,
-            clauses.len()
-        ))?;
+    fn get_unit_clauses(&self, assignment: &Assignment) -> Vec<Literal> {
+        let mut cloned_formula = self.clone();
+
+        for literal in assignment.iter_literals() {
+            cloned_formula.remove_clauses_containing(literal);
+        }
+
+        if cloned_formula.is_empty() {
+            return Vec::new();
+        }
+
+        for literal in assignment.iter_literals() {
+            cloned_formula.remove_from_clauses(literal.not());
+        }
+
+        cloned_formula
+            .clauses
+            .into_iter()
+            .filter_map(|clause| clause.as_unit_clause())
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Clause(Vec<Literal>);
+
+impl Clause {
+    fn contains(&self, literal: Literal) -> bool {
+        self.0.contains(&literal)
     }
 
-    Ok(CNF {
-        num_variables,
-        clauses,
-    })
+    fn remove(&mut self, literal_to_remove: Literal) {
+        self.0.retain(|literal| literal != &literal_to_remove);
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn as_unit_clause(&self) -> Option<Literal> {
+        match self.0.as_slice() {
+            &[unit_literal] => Some(unit_literal),
+            _ => None,
+        }
+    }
+}
+
+/// Inner value is always guaranteed to be positive
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct Variable(NonZeroI32);
+
+impl Variable {
+    /// Returns `None' if index is too large. Only `NonZeroI32::MAX` variables
+    /// are allowed.
+    pub fn new(inner: NonZeroU32) -> Option<Self> {
+        NonZeroI32::try_from(inner).ok().map(Self)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct Literal(NonZeroI32);
+
+impl Literal {
+    fn new(inner: NonZeroI32) -> Self {
+        Literal(inner)
+    }
+
+    fn new_from_variable(variable: Variable, is_not: bool) -> Self {
+        let as_literal = Literal(variable.0);
+        if is_not { as_literal.not() } else { as_literal }
+    }
+
+    fn into_variable(self) -> Variable {
+        Variable(self.0.abs())
+    }
+}
+
+impl Not for Literal {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(self.0.neg())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct Assignment(Vec<Literal>);
+
+impl Assignment {
+    fn iter_literals(&self) -> impl Iterator<Item = Literal> {
+        self.0.iter().copied()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl AddAssign<Literal> for Assignment {
+    fn add_assign(&mut self, rhs: Literal) {
+        if !self.contains_variable(rhs.into_variable()) {
+            self.0.push(rhs);
+        }
+    }
+}
+
+impl Assignment {
+    fn contains_variable(&self, variable: Variable) -> bool {
+        self.0
+            .iter()
+            .any(|literal| literal.into_variable() == variable)
+    }
 }
