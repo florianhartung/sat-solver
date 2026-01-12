@@ -6,7 +6,7 @@ pub fn solve(cnf: CNF) -> Outcome {
     dpll(cnf, Assignment::default())
 }
 
-fn dpll(formula: CNF, mut assignment: Assignment) -> Outcome {
+fn dpll(mut formula: CNF, mut assignment: Assignment) -> Outcome {
     // Pure Literals
     let pure_literals = formula.get_pure_literals();
     if !pure_literals.is_empty() {
@@ -35,21 +35,24 @@ fn dpll(formula: CNF, mut assignment: Assignment) -> Outcome {
     //     assignment.len() - before_propagation
     // );
 
-    if let Some(outcome) = sat(formula.clone(), &assignment) {
+    if let Some(outcome) = sat(&mut formula, &assignment) {
         return outcome;
     }
 
     let next_literal = get_next_literal(&formula, &assignment);
 
-    let mut assignment2 = assignment.clone();
-    assignment += next_literal;
-    assignment2 += !next_literal;
+    let mut assignment_with_pos_literal = assignment.clone();
+    assignment_with_pos_literal += next_literal;
+    let mut assignment_with_neg_literal = assignment;
+    assignment_with_neg_literal += next_literal.not();
 
     // println!("Guessing {:?}", next_literal);
-    let first = dpll(formula.clone(), assignment2);
+    let pos_literal_outcome = dpll(formula.clone(), assignment_with_pos_literal);
+
     // println!("Guessing {:?}", !next_literal);
-    let second = dpll(formula, assignment);
-    first | second
+    let neg_literal_outcome = dpll(formula, assignment_with_neg_literal);
+
+    pos_literal_outcome | neg_literal_outcome
 }
 
 fn get_next_literal(formula: &CNF, assignment: &Assignment) -> Literal {
@@ -64,7 +67,7 @@ fn get_next_literal(formula: &CNF, assignment: &Assignment) -> Literal {
     unreachable!("because the assignment is full, the solver should have returned already")
 }
 
-fn sat(mut formula: CNF, assignment: &Assignment) -> Option<Outcome> {
+fn sat(formula: &mut CNF, assignment: &Assignment) -> Option<Outcome> {
     for literal in assignment.iter_literals() {
         formula.remove_clauses_containing(literal);
     }
