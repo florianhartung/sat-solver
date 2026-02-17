@@ -16,3 +16,8 @@ debug = true # for flamegraph
 
 
 [dependencies]
+
+[dev-dependencies]
+anyhow = "1"
+envconfig = "0.11.1"
+rayon = "1.11"
