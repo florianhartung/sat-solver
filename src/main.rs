@@ -12,8 +12,8 @@ fn main() -> Result<(), String> {
         .map_err(|err| format!("failed to parse dimacs file: {err}"))?;
 
     match sat_solver_core::solve(cnf) {
-        Outcome::Satisfiable => println!("s UNSATISFIABLE"),
-        Outcome::Unsatisfiable => println!("s SATISFIABLE"),
+        Outcome::Satisfiable => println!("s SATISFIABLE"),
+        Outcome::Unsatisfiable => println!("s UNSATISFIABLE"),
     }
 
     Ok(())

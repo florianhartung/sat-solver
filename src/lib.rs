@@ -6,5 +6,5 @@ mod solver;
 pub use dimacs_parser::parse_from_dimacs_str;
 
 // Solving
-pub use cnf::CNF;
-pub use solver::{outcome::Outcome, solve};
+pub use cnf::OwnedCNF;
+pub use solver::{Outcome, solve};

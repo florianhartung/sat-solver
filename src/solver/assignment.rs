@@ -1,4 +1,4 @@
-use std::ops::AddAssign;
+use std::ops::{AddAssign, Not};
 
 use crate::cnf::{Literal, Variable};
 
@@ -6,10 +6,6 @@ use crate::cnf::{Literal, Variable};
 pub struct Assignment(Vec<Literal>);
 
 impl Assignment {
-    pub fn iter_literals(&self) -> impl Iterator<Item = Literal> {
-        self.0.iter().copied()
-    }
-
     #[allow(unused, reason = "needed for debugging")]
     pub fn len(&self) -> usize {
         self.0.len()

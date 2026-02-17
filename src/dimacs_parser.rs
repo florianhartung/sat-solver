@@ -1,11 +1,11 @@
 use std::{mem, num::NonZeroI32};
 
 use crate::{
-    CNF,
-    cnf::{Clause, Literal},
+    OwnedCNF,
+    cnf::{Literal, OwnedClause},
 };
 
-pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
+pub fn parse_from_dimacs_str(input: &str) -> Result<OwnedCNF, String> {
     let non_empty_lines = input.lines().filter(|line| !line.trim().is_empty());
 
     let mut non_comment_lines = non_empty_lines.filter(|line| !line.starts_with('c'));
@@ -61,7 +61,7 @@ pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
                 .map_err(|parse_err| format!("failed to parse literal: {parse_err}"))
         });
 
-    let mut clauses: Vec<Clause> = Vec::new();
+    let mut clauses: Vec<OwnedClause> = Vec::new();
     let mut current_clause: Vec<Literal> = Vec::new();
 
     for literal in literals {
@@ -72,13 +72,13 @@ pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
             None => {
                 if !current_clause.is_empty() {
                     let new_clause = mem::take(&mut current_clause);
-                    clauses.push(Clause(new_clause));
+                    clauses.push(OwnedClause(new_clause));
                 }
             }
         }
     }
     if !current_clause.is_empty() {
-        clauses.push(Clause(current_clause));
+        clauses.push(OwnedClause(current_clause));
     }
 
     // This check doesn't hurt I guess
@@ -90,7 +90,7 @@ pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
         ))?;
     }
 
-    Ok(CNF {
+    Ok(OwnedCNF {
         num_variables,
         clauses,
     })

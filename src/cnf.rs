@@ -6,25 +6,25 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CNF {
+pub struct OwnedCNF {
     pub(crate) num_variables: u32, // u32 is not correct
-    pub(crate) clauses: Vec<Clause>,
+    pub(crate) clauses: Vec<OwnedClause>,
 }
 
-impl CNF {
-    pub(crate) fn is_empty(&self) -> bool {
+impl OwnedCNF {
+    pub fn is_empty(&self) -> bool {
         self.clauses.is_empty()
     }
 
-    pub(crate) fn contains_empty_clause(&self) -> bool {
+    pub fn contains_empty_clause(&self) -> bool {
         self.clauses.iter().any(|clause| clause.is_empty())
     }
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct Clause(pub Vec<Literal>);
+pub struct OwnedClause(pub Vec<Literal>);
 
-impl Clause {
+impl OwnedClause {
     pub fn iter_literals(&self) -> impl Iterator<Item = Literal> {
         self.0.iter().copied()
     }
@@ -34,11 +34,18 @@ impl Clause {
     }
 
     pub fn remove(&mut self, literal_to_remove: Literal) {
-        self.0.retain(|literal| literal != &literal_to_remove);
+        self.0.retain(|literal| literal != &literal_to_remove)
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn as_unit_clause(&self) -> Option<Literal> {
+        match self.0.as_slice() {
+            &[unit_literal] => Some(unit_literal),
+            _ => None,
+        }
     }
 }
 
