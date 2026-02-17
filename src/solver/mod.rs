@@ -1,6 +1,12 @@
-use std::{num::NonZeroU32, ops::Not};
+use std::{collections::HashMap, num::NonZeroU32, ops::Not};
 
-use crate::{Assignment, CNF, Literal, Outcome, Variable};
+use crate::{
+    cnf::{CNF, Clause, Literal, Variable},
+    solver::{assignment::Assignment, outcome::Outcome},
+};
+
+pub mod assignment;
+pub mod outcome;
 
 pub fn solve(cnf: CNF) -> Outcome {
     dpll(cnf, Assignment::default())
@@ -85,4 +91,77 @@ fn sat(formula: &mut CNF, assignment: &Assignment) -> Option<Outcome> {
     }
 
     None
+}
+
+impl CNF {
+    fn remove_clauses_containing(&mut self, literal: Literal) {
+        self.clauses.retain(|clause| !clause.contains(literal));
+    }
+
+    fn remove_from_clauses(&mut self, literal: Literal) {
+        for clause in &mut self.clauses {
+            clause.remove(literal);
+        }
+    }
+
+    fn get_unit_clauses(&self, assignment: &Assignment) -> Vec<Literal> {
+        let mut cloned_formula = self.clone();
+
+        for literal in assignment.iter_literals() {
+            cloned_formula.remove_clauses_containing(literal);
+        }
+
+        if cloned_formula.is_empty() {
+            return Vec::new();
+        }
+
+        for literal in assignment.iter_literals() {
+            cloned_formula.remove_from_clauses(literal.not());
+        }
+
+        cloned_formula
+            .clauses
+            .into_iter()
+            .filter_map(|clause| clause.as_unit_clause())
+            .collect()
+    }
+
+    fn get_pure_literals(&self) -> Vec<Literal> {
+        let mut pos_neg_by_variable = HashMap::<Variable, (bool, bool)>::new();
+
+        let all_literals = self
+            .clauses
+            .iter()
+            .flat_map(|clause| clause.iter_literals());
+
+        for literal in all_literals {
+            let entry = pos_neg_by_variable
+                .entry(literal.into_variable())
+                .or_insert((false, false));
+
+            if literal.is_neg() {
+                entry.1 = true;
+            } else {
+                entry.0 = true;
+            }
+        }
+
+        pos_neg_by_variable
+            .into_iter()
+            .filter_map(|(variable, pos_neg)| match pos_neg {
+                (true, false) => Some(Literal::new_from_variable(variable, false)),
+                (false, true) => Some(Literal::new_from_variable(variable, true)),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+impl Clause {
+    fn as_unit_clause(&self) -> Option<Literal> {
+        match self.0.as_slice() {
+            &[unit_literal] => Some(unit_literal),
+            _ => None,
+        }
+    }
 }

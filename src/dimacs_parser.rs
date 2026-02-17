@@ -1,6 +1,9 @@
 use std::{mem, num::NonZeroI32};
 
-use crate::{CNF, Clause, Literal};
+use crate::{
+    CNF,
+    cnf::{Clause, Literal},
+};
 
 pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
     let non_empty_lines = input.lines().filter(|line| !line.trim().is_empty());
