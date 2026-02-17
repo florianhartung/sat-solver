@@ -34,7 +34,7 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-        rust-target = pkgs.pkgsStatic.targetPlatform.rust.rustcTarget;
+        rust-target = pkgs.pkgsStatic.stdenv.targetPlatform.rust.rustcTarget;
         rust-toolchain = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" ];
           targets = [
@@ -71,5 +71,4 @@
         };
       }
     );
-  # });
 }
