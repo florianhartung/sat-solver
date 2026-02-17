@@ -1,6 +1,7 @@
 //! # General-Purpose Data Types for CNFs
 
 use std::{
+    convert::TryFrom,
     num::{NonZeroI32, NonZeroU32},
     ops::{Neg, Not},
 };
@@ -25,7 +26,7 @@ impl OwnedCNF {
 pub struct OwnedClause(pub Vec<Literal>);
 
 impl OwnedClause {
-    pub fn iter_literals(&self) -> impl Iterator<Item = Literal> {
+    pub fn iter_literals(&self) -> impl Iterator<Item = Literal> + use<'_> {
         self.0.iter().copied()
     }
 

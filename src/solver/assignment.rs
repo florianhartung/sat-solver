@@ -1,4 +1,4 @@
-use std::ops::{AddAssign, Not};
+use std::ops::AddAssign;
 
 use crate::cnf::{Literal, Variable};
 

@@ -61,16 +61,12 @@ fn dpll(mut cnf: PartiallyAssignedCNF, mut assignment: Assignment) -> Outcome {
         return Outcome::Satisfiable;
     }
 
-    let second_outcome = {
-        let mut assignment_with_neg_literal = assignment;
-        assignment_with_neg_literal += next_literal.not();
-        cnf.assign(next_literal.not());
-
-        dpll(cnf, assignment_with_neg_literal)
-    };
+    let mut assignment_with_neg_literal = assignment;
+    assignment_with_neg_literal += next_literal.not();
+    cnf.assign(next_literal.not());
 
     // no need to check first outcome again
-    second_outcome
+    dpll(cnf, assignment_with_neg_literal)
 }
 
 fn get_next_literal(cnf: &PartiallyAssignedCNF, assignment: &Assignment) -> Literal {
