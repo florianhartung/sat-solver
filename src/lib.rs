@@ -39,7 +39,7 @@ impl CNF {
         self.clauses = self
             .clauses
             .iter_mut()
-            .map(|clause| mem::replace(clause, Clause(Vec::new())))
+            .map(|clause| mem::replace(clause, Clause::default()))
             .filter(|clause| !clause.contains(literal))
             .collect()
     }
@@ -111,7 +111,7 @@ impl CNF {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 struct Clause(Vec<Literal>);
 
 impl Clause {
