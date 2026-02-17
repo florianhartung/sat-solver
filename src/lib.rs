@@ -189,6 +189,7 @@ impl Assignment {
         self.0.iter().copied()
     }
 
+    #[allow(unused, reason = "needed for debugging")]
     fn len(&self) -> usize {
         self.0.len()
     }

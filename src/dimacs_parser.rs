@@ -51,7 +51,7 @@ pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
     // Now parse the clauses and literals. Every clause is a list of
     // whitespace-delimited integers. Multiple clauses are delimited by zeros.
 
-    let mut literals = non_comment_lines
+    let literals = non_comment_lines
         .flat_map(str::split_whitespace)
         .map(|literal| {
             str::parse::<i32>(literal)
@@ -61,7 +61,7 @@ pub fn parse_from_dimacs_str(input: &str) -> Result<CNF, String> {
     let mut clauses: Vec<Clause> = Vec::new();
     let mut current_clause: Vec<Literal> = Vec::new();
 
-    while let Some(literal) = literals.next() {
+    for literal in literals {
         match NonZeroI32::new(literal?) {
             Some(literal) => {
                 current_clause.push(Literal::new(literal));
