@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    mem,
     num::{NonZeroI32, NonZeroU32},
     ops::{AddAssign, BitOr, Neg, Not},
 };
@@ -36,12 +35,7 @@ pub struct CNF {
 
 impl CNF {
     fn remove_clauses_containing(&mut self, literal: Literal) {
-        self.clauses = self
-            .clauses
-            .iter_mut()
-            .map(|clause| mem::replace(clause, Clause::default()))
-            .filter(|clause| !clause.contains(literal))
-            .collect()
+        self.clauses.retain(|clause| !clause.contains(literal));
     }
 
     fn is_empty(&self) -> bool {
